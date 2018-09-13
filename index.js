@@ -22,12 +22,12 @@ const stdlib = Object.keys(scopes).reduce((acc, key) => ({...acc, ...scopes[key]
 
 const q = sym => ['quote', sym];
 const objZip = (keys, vals) => keys.reduce((acc,key,i)=>({...acc, [key]: vals[i]}), {});
-const parseLambda = ([keys, prog], scope) => (...args) => exec(prog, {...scope, objZip(keys, args)});
-const getFunc = (sym, scope) =>
-  Array.isArray(sym) ?
-  exec(sym, scope) :
-  sym in scope ?
-  scope[sym];
+const parseLambda = ([keys, prog], scope) => (...args) => exec(prog, {...scope, ...objZip(keys, args)});
+const getFunc = (sym, scope) => {
+  if (Array.isArray(sym))
+    return exec(sym, scope);
+  return scope[sym];
+}
 
 const exec = (prog, scope) => {
   const { car, cdr } = stdlib;
@@ -36,13 +36,19 @@ const exec = (prog, scope) => {
   switch (sym) {
     case 'quote': return car(args);
     case 'lambda': return parseLambda(args, scope);
-    default: return getFunc(sym, scope).apply(null, args);
+    case 'apply': return exec([...getFunc(args[0]), ...exec(args[1], scope)], scope);
+    default: 
+      return getFunc(sym, scope).apply(null, args.map(arg => exec(arg, scope)));
   }
   return prog;
 };
 
 const add2 = ['lambda', ['a', 'b'], ['+', 'a', 'b']];
 
+const average = ['lambda', ['list'], ['/', ['apply', '+', 'list'], ['length', 'list']]];
+
 const helloWorld = ['print', q('Hello, world!')];
 
 exec(helloWorld, stdlib);
+
+//exec(['print', [average, q([1, 2, 3])]], stdlib);
