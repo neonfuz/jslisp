@@ -26,7 +26,10 @@ const parseLambda = ([keys, prog], scope) => (...args) => exec(prog, {...scope, 
 const getFunc = (sym, scope) => {
   if (Array.isArray(sym))
     return exec(sym, scope);
-  return scope[sym];
+  else if (sym in scope)
+    return scope[sym];
+  else
+    return sym;
 }
 
 const exec = (prog, scope) => {
@@ -36,9 +39,12 @@ const exec = (prog, scope) => {
   switch (sym) {
     case 'quote': return car(args);
     case 'lambda': return parseLambda(args, scope);
-    case 'apply': return exec([...getFunc(args[0]), ...exec(args[1], scope)], scope);
+    case 'apply': return exec([...getFunc(args[0], scope), ...exec(args[1], scope)], scope);
     default: 
-      return getFunc(sym, scope).apply(null, args.map(arg => exec(arg, scope)));
+      ; const func = getFunc(sym, scope);
+      if (typeof func === 'function')
+        return getFunc(sym, scope).apply(null, args.map(arg => exec(arg, scope)));
+      return func;
   }
   return prog;
 };
@@ -49,6 +55,7 @@ const average = ['lambda', ['list'], ['/', ['apply', '+', 'list'], ['length', 'l
 
 const helloWorld = ['print', q('Hello, world!')];
 
+exec(1, stdlib);
 exec(helloWorld, stdlib);
-
+exec(['print', ['+', 1, 2]], stdlib);
 //exec(['print', [average, q([1, 2, 3])]], stdlib);
