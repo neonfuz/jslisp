@@ -42,35 +42,50 @@ const getFunc = (sym, scope) => {
     return sym;
 }
 
-const exec = (prog, scope) => {
+const getLexType = prog => {
   switch (typeof prog) {
-    case 'number': return prog;
+    case 'number': return 'number';
     case 'string':
+      if (prog.match(/^".*"$/))
+        return 'string';
+      else
+        return 'symbol';
+    case 'object':
+      if (Array.isArray(prog))
+        return 'list';
+      else
+        return 'object';
+  }
+};
+
+const exec = (prog, scope) => {
+  const type = getLexType(prog);
+  switch (type) {
+    case 'number': return prog;
+    case 'string': return prog;
+    case 'symbol':
       if (prog in scope) return scope[prog];
       else throw `Error: Symbol '${prog}' undefined.`;
-    case 'object':
-      if (Array.isArray(prog)) {
-        const [head, ...tail] = prog;
-        const func = exec(head, scope);
-        switch (func) {
-          case constants.quote: return tail[0];
-          case constants.lambda: return parseLambda(tail, scope);
-          case constants.apply:
-            const [ahead, ...atail] = tail;
-            const afunc = exec(ahead, scope);
-            return afunc.apply(null, atail.map(arg => exec(arg, scope)));
-          default:
-            if (typeof func !== 'function')
-              throw `Error: tried executing non function '${JSON.stringify(func)}'`
-            return func.apply(null, tail.map(arg => exec(arg, scope)));
-        }
-      } else {
-        throw `Error: Encountered non array object '${JSON.stringify(prog)}'`;
+    case 'list':
+      const [head, ...tail] = prog;
+      const func = exec(head, scope);
+      switch (func) {
+        case constants.quote: return tail[0];
+        case constants.lambda: return parseLambda(tail, scope);
+        case constants.apply:
+          const [ahead, ...atail] = tail;
+          const afunc = exec(ahead, scope);
+          return afunc.apply(null, atail.map(arg => exec(arg, scope)));
+        default:
+          if (typeof func !== 'function')
+            throw `Error: tried executing non function '${JSON.stringify(func)}'`
+          return func.apply(null, tail.map(arg => exec(arg, scope)));
       }
+    case 'object':
+      throw 'Error: encountered JS object (undefined)';
   }
-
-
 };
+
 
 const add2 = ['lambda', ['a', 'b'], ['+', 'a', 'b']];
 
